@@ -1,0 +1,14 @@
+<IfModule mod_setenvif.c>
+  <IfModule mod_headers.c>
+    <FilesMatch "\.(bmp|cur|gif|ico|jpe?g|png|pdf|svgz?|webp|avifs?)$">
+      SetEnvIf Origin ":" IS_CORS
+      Header set Access-Control-Allow-Origin "*" env=IS_CORS
+    </FilesMatch>
+  </IfModule>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+   RewriteEngine on
+   RewriteRule ^$ public/     [L]
+   RewriteRule (.*) public/$1 [L]
+</IfModule>
