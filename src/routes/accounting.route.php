@@ -369,6 +369,64 @@ $app->get('/accounting/transactions', function (Request $req, Response $res) use
 
 });
 
+$app->post('/accounting/transactions', function (Request $req, Response $res) use ($container) {
+
+    try{
+
+        $body       = $req->getParsedBody();
+        $conn       = $container->get('connection');
+        $files      = $req->getUploadedFiles();
+        $filePath   = "";
+
+        $created        = $body['date'];
+        $amount         = $body['amount'];
+        $status         = $body['status'];
+        $remark         = $body['remark'];
+        $credit         = $body['credit'];
+        $debit          = $body['debit'];
+        $orderId        = $body['orderId'];
+
+        if(array_key_exists('file', $files)) $file = $files['file'];
+        if(array_key_exists('file', $files)){
+            $extension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
+            $basename = 'tr-'.time(); // see http://php.net/manual/en/function.random-bytes.php
+            $filename = sprintf('%s.%0.8s', $basename, $extension);
+
+            $file->moveTo('uploads' . DIRECTORY_SEPARATOR . $filename);
+
+            $filePath = $filename;
+        }
+
+        $q          = "INSERT INTO transactions(amount, status, remark, debit, credit, order_id, photo, created_at)
+                        VALUES('$amount', '$status', '$remark', '$debit', '$credit', '$orderId', '$filePath', '$created')";
+        $stmt       = $conn->prepare($q);
+        $stmt->execute();
+        
+        $respObj = [
+            'status'    => true,
+            'type'      => 'success',
+            'data'      => null,
+            'message'   => 'created successfully'
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+
+    }catch(Exception $e){
+
+        $respObj = [
+            "status"    => false,
+            "type"      => "error",
+            "data"      => null,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+
+    }
+});
+
 $app->post('/accounting/upload', function (Request $req, Response $res) use ($container) {
     try{
         $body = json_decode($req->getBody(), true);
