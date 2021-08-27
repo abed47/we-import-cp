@@ -385,7 +385,7 @@ $app->post('/accounting/transactions', function (Request $req, Response $res) us
         $remark         = $body['remark'];
         $credit         = $body['credit'];
         $debit          = $body['debit'];
-        $orderId        = $body['orderId'];
+        $orderId        = $body['orderId'] ?? NULL;
 
         if(array_key_exists('file', $files)) $file = $files['file'];
         if(array_key_exists('file', $files)){
@@ -400,72 +400,6 @@ $app->post('/accounting/transactions', function (Request $req, Response $res) us
 
         $q          = "INSERT INTO transactions(amount, status, remark, debit, credit, order_id, photo, created_at)
                         VALUES('$amount', '$status', '$remark', '$debit', '$credit', '$orderId', '$filePath', '$created')";
-        $stmt       = $conn->prepare($q);
-        $stmt->execute();
-        
-        $respObj = [
-            'status'    => true,
-            'type'      => 'success',
-            'data'      => null,
-            'message'   => 'created successfully'
-        ];
-
-        $res->getBody()->write(json_encode($respObj));
-        return $res->withStatus(200);
-
-    }catch(Exception $e){
-
-        $respObj = [
-            "status"    => false,
-            "type"      => "error",
-            "data"      => null,
-            "message"   => $e->getMessage() ?? "unknown error"
-        ];
-
-        $res->getBody()->write(json_encode($respObj));
-        return $res->withStatus(500);
-
-    }
-});
-
-$app->put('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use ($container) {
-
-    try{
-
-        $body       = $req->getParsedBody();
-        $conn       = $container->get('connection');
-        $files      = $req->getUploadedFiles();
-        $id         = $args['id'];
-        
-        $filePath       = $body['photo'];
-        $created        = $body['date'];
-        $amount         = $body['amount'];
-        $status         = $body['status'];
-        $remark         = $body['remark'];
-        $credit         = $body['credit'];
-        $debit          = $body['debit'];
-        $orderId        = $body['orderId'];
-
-        if(array_key_exists('file', $files)) $file = $files['file'];
-        if(array_key_exists('file', $files)){
-            $extension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
-            $basename = 'tr-'.time(); // see http://php.net/manual/en/function.random-bytes.php
-            $filename = sprintf('%s.%0.8s', $basename, $extension);
-
-            $file->moveTo('uploads' . DIRECTORY_SEPARATOR . $filename);
-
-            $filePath = $filename;
-        }
-
-        $q          = "UPDATE transactions SET amount = '$amount',
-        status      = '$status',
-        remark      = '$remark',
-        debit       = '$debit',
-        credit      = '$credit',
-        order_id    = '$orderId',
-        photo       = '$filePath',
-        created_at   = '$created'
-        WHERE id    = '$id'";
         $stmt       = $conn->prepare($q);
         $stmt->execute();
         
@@ -663,13 +597,11 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
             
             if($i == 0){
                 $accountsQuery = $accountsQuery . "SELECT a.name, 
-                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - 
-                (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
+                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
                 FROM accounts a WHERE a.id = ".$accounts[$i];
             }else{
                 $accountsQuery = $accountsQuery . " UNION ALL SELECT a.name, 
-                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - 
-                (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
+                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
                 FROM accounts a WHERE a.id = ".$accounts[$i];
             }
 
@@ -763,5 +695,71 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
 
         $res->getBody()->write(json_encode($respObj));
         return $res->withStatus(500);
+    }
+});
+
+$app->post('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use ($container) {
+
+    try{
+
+        $body       = $req->getParsedBody();
+        $conn       = $container->get('connection');
+        $files      = $req->getUploadedFiles();
+        $id         = $args['id'];
+        
+        $filePath       = $body['photo'];
+        $created        = $body['date'];
+        $amount         = $body['amount'];
+        $status         = $body['status'];
+        $remark         = $body['remark'];
+        $credit         = $body['credit'];
+        $debit          = $body['debit'];
+        $orderId        = $body['orderId'];
+
+        if(array_key_exists('file', $files)) $file = $files['file'];
+        if(array_key_exists('file', $files)){
+            $extension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
+            $basename = 'tr-'.time(); // see http://php.net/manual/en/function.random-bytes.php
+            $filename = sprintf('%s.%0.8s', $basename, $extension);
+
+            $file->moveTo('uploads' . DIRECTORY_SEPARATOR . $filename);
+
+            $filePath = $filename;
+        }
+
+        $q          = "UPDATE transactions SET amount = '$amount',
+        status      = '$status',
+        remark      = '$remark',
+        debit       = '$debit',
+        credit      = '$credit',
+        order_id    = '$orderId',
+        photo       = '$filePath',
+        created_at   = '$created'
+        WHERE id    = '$id'";
+        $stmt       = $conn->prepare($q);
+        $stmt->execute();
+        
+        $respObj = [
+            'status'    => true,
+            'type'      => 'success',
+            'data'      => null,
+            'message'   => 'created successfully'
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+
+    }catch(Exception $e){
+
+        $respObj = [
+            "status"    => false,
+            "type"      => "error",
+            "data"      => null,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+
     }
 });
