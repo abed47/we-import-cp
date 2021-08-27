@@ -567,6 +567,20 @@ $app->post('/accounting/upload', function (Request $req, Response $res) use ($co
 
 });
 
+function createDateFilter($s,$e, $c, $d){
+    $z = "";
+
+    if(!$s && !$e) return $z;
+
+    if($s && $e && $c && $d){
+        $z = " AND CAST(t.created_at AS DATE) BETWEEN CAST('$s' AS DATE) AND CAST('$e' AS DATE)";
+    }else{
+        $z = " WHERE CAST(t.created_at AS DATE) BETWEEN CAST('$s' AS DATE) AND CAST('$e' AS DATE)";
+    }
+
+    return $z;
+};
+
 $app->post('/accounting/transactions/search', function (Request $req, Response $res) use ($container){
     try{
         
@@ -578,8 +592,10 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
         $accounts       = $body['accounts'];
         $startDate      = $body['startDate'];
         $endDate        = $body['endDate'];
+        $startRange     = $body['startRange'];
+        $endRage        = $body['endRange'];
 
-        $dateFilter = "";
+        $dateFilter = createDateFilter($startDate, $endDate, $credit, $debit);
 
         //crete query string to fill later
         $accountsQuery          = "";
@@ -634,7 +650,7 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
                         $transactionsQuery = $transactionsQuery . " ,".$debit[$i]."";
                     }
                 }
-                $transactionsQuery = $transactionsQuery . ")";
+                $transactionsQuery = $transactionsQuery . ") " . $dateFilter;
             }
 
             if(count($credit) > 0 && count($debit) > 0) $transactionsQuery = $transactionsQuery . " OR ";
@@ -649,9 +665,12 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
                         $transactionsQuery = $transactionsQuery . " ,".$credit[$i]."";
                     }
                 }
-                $transactionsQuery = $transactionsQuery . ")";
+                $transactionsQuery = $transactionsQuery . ")" . $dateFilter;
             }
         }
+
+        //add date filter
+        $transactionsQuery = $transactionsQuery . " ". $dateFilter;
 
         //account calculations
         if($accountsQuery){
