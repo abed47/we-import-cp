@@ -1,5 +1,5 @@
 {
-    "name": "WeImport-Backend",
+    "name": "revision/we-import-cp",
     "description": "A slim application for we import backend",
     "keywords": ["microframework", "rest", "router", "psr7"],
     "homepage": "http://github.com/slimphp/Slim-Skeleton",

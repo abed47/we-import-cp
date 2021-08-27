@@ -1,0 +1,10 @@
+{
+    "name": "revision/we-import-cp",
+    "authors": [
+        {
+            "name": "abdull-rahman",
+            "email": "abed472011@mail.com"
+        }
+    ],
+    "require": {}
+}

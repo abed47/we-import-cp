@@ -335,6 +335,7 @@ $app->get('/accounting/transactions', function (Request $req, Response $res) use
         t.photo as photo,
         t.debit as debit_id,
         t.credit as credit_id,
+        t.order_id as order_id,
         a.name as debit_name,
         b.name as credit_name
         FROM transactions t
@@ -427,6 +428,72 @@ $app->post('/accounting/transactions', function (Request $req, Response $res) us
     }
 });
 
+$app->put('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use ($container) {
+
+    try{
+
+        $body       = $req->getParsedBody();
+        $conn       = $container->get('connection');
+        $files      = $req->getUploadedFiles();
+        $id         = $args['id'];
+        
+        $filePath       = $body['photo'];
+        $created        = $body['date'];
+        $amount         = $body['amount'];
+        $status         = $body['status'];
+        $remark         = $body['remark'];
+        $credit         = $body['credit'];
+        $debit          = $body['debit'];
+        $orderId        = $body['orderId'];
+
+        if(array_key_exists('file', $files)) $file = $files['file'];
+        if(array_key_exists('file', $files)){
+            $extension = pathinfo($file->getClientFilename(), PATHINFO_EXTENSION);
+            $basename = 'tr-'.time(); // see http://php.net/manual/en/function.random-bytes.php
+            $filename = sprintf('%s.%0.8s', $basename, $extension);
+
+            $file->moveTo('uploads' . DIRECTORY_SEPARATOR . $filename);
+
+            $filePath = $filename;
+        }
+
+        $q          = "UPDATE transactions SET amount = '$amount',
+        status      = '$status',
+        remark      = '$remark',
+        debit       = '$debit',
+        credit      = '$credit',
+        order_id    = '$orderId',
+        photo       = '$filePath',
+        created_at   = '$created'
+        WHERE id    = '$id'";
+        $stmt       = $conn->prepare($q);
+        $stmt->execute();
+        
+        $respObj = [
+            'status'    => true,
+            'type'      => 'success',
+            'data'      => null,
+            'message'   => 'created successfully'
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+
+    }catch(Exception $e){
+
+        $respObj = [
+            "status"    => false,
+            "type"      => "error",
+            "data"      => null,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+
+    }
+});
+
 $app->get('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use($container) {
 
     try{
@@ -444,6 +511,7 @@ $app->get('/accounting/transactions/[{id}]', function (Request $req, Response $r
         t.photo as photo,
         t.debit as debit_id,
         t.credit as credit_id,
+        t.order_id as order_id,
         a.name as debit_name,
         b.name as credit_name
         FROM transactions t
