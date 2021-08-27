@@ -581,15 +581,15 @@ function createDateFilter($s,$e, $c, $d){
     return $z;
 };
 
-function createAmountFilter($s,$e, $c, $d){
+function createAmountFilter($s,$e, $c, $d, $f, $g){
     $z = "";
 
     if(!$s && !$e) return $z;
 
-    if($s && $e && $c && $d){
-        $z = " AND amount BETWEEN '$s' AND '$d'";
+    if(($s || $e) && ($c && $d) || $f || $g){
+        $z = " AND amount BETWEEN '$s' AND '$e'";
     }else{
-        $z = " WHERE amount BETWEEN '$s' AND '$d'";
+        $z = " WHERE amount BETWEEN '$s' AND '$e'";
     }
 
     return $z;
@@ -606,11 +606,11 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
         $accounts       = $body['accounts'];
         $startDate      = $body['startDate'];
         $endDate        = $body['endDate'];
-        $startRange     = $body['startRange'];
-        $endRage        = $body['endRange'];
+        $startRange     = $body['startAmount'];
+        $endRage        = $body['endAmount'];
 
         $dateFilter = createDateFilter($startDate, $endDate, $credit, $debit);
-        $amountFilter = createAmountFilter($startRange, $endRage, $startDate, $endDate);
+        $amountFilter = createAmountFilter($startRange, $endRage, $startDate, $endDate, $credit, $debit);
 
         //crete query string to fill later
         $accountsQuery          = "";
@@ -665,7 +665,7 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
                         $transactionsQuery = $transactionsQuery . " ,".$debit[$i]."";
                     }
                 }
-                $transactionsQuery = $transactionsQuery . ") " . $dateFilter;
+                $transactionsQuery = $transactionsQuery . ") " . $dateFilter . " " . $amountFilter;
             }
 
             if(count($credit) > 0 && count($debit) > 0) $transactionsQuery = $transactionsQuery . " OR ";
@@ -680,12 +680,12 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
                         $transactionsQuery = $transactionsQuery . " ,".$credit[$i]."";
                     }
                 }
-                $transactionsQuery = $transactionsQuery . ")" . $dateFilter;
+                $transactionsQuery = $transactionsQuery . ")" . " " . $dateFilter . " " . $amountFilter;
             }
         }
 
         //add date filter
-        $transactionsQuery = $transactionsQuery . " ". $dateFilter;
+        // $transactionsQuery = $transactionsQuery . " ". $dateFilter;
 
         //account calculations
         if($accountsQuery){
