@@ -632,3 +632,136 @@ $app->post('/accounting/upload', function (Request $req, Response $res) use ($co
     
 
 });
+
+$app->post('/accounting/transactions/search', function (Request $req, Response $res) use ($container){
+    try{
+        
+        $conn       = $container->get('connection');
+        $body       = $req->getParsedBody();
+
+        $debit          = $body['debit'];
+        $credit         = $body['credit'];
+        $accounts       = $body['accounts'];
+        $startDate      = $body['startDate'];
+        $endDate        = $body['endDate'];
+
+        $dateFilter = "";
+
+        //crete query string to fill later
+        $accountsQuery          = "";
+        $creditAccountsQuery    = "";
+        $debitAccountsQuery     = "";
+        $transactionsQuery      = "";
+
+        //query results empty variables
+        $accountsTotals     = null;
+        $debitAccounts      = null;
+        $creditAccounts     = null;
+        $transactions       = null;
+
+        for($i = 0; $i < count($accounts); $i++){
+            
+            if($i == 0){
+                $accountsQuery = $accountsQuery . "SELECT a.name, 
+                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - 
+                (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
+                FROM accounts a WHERE a.id = ".$accounts[$i];
+            }else{
+                $accountsQuery = $accountsQuery . " UNION ALL SELECT a.name, 
+                SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '" . $accounts[$i] ."') - 
+                (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '" . $accounts[$i] ."') ) as total
+                FROM accounts a WHERE a.id = ".$accounts[$i];
+            }
+
+        }
+
+        //get transaction query
+        if(count($debit) > 0 || count($credit)){
+            $transactionsQuery = "SELECT 
+            t.id as id,
+            t.amount as amount,
+            t.reason as reason,
+            t.remark as remark,
+            t.type as t_type,
+            t.created_at as createdAt,
+            t.status as status,
+            t.photo as photo,
+            t.debit as debit_id,
+            t.credit as credit_id,
+            a.name as debit_name,
+            b.name as credit_name
+            FROM transactions t
+            LEFT JOIN accounts a ON a.id = t.debit
+            LEFT JOIN accounts b ON b.id = t.credit";
+
+            if(count($debit) > 0){
+                for($i = 0; $i < count($debit); $i++){
+                    if($i == 0){
+                        $transactionsQuery = $transactionsQuery . " WHERE t.debit IN(".$debit[$i]."";
+                    }else{
+                        $transactionsQuery = $transactionsQuery . " ,".$debit[$i]."";
+                    }
+                }
+                $transactionsQuery = $transactionsQuery . ")";
+            }
+
+            if(count($credit) > 0 && count($debit) > 0) $transactionsQuery = $transactionsQuery . " OR ";
+            if(!count($debit) > 0) $transactionsQuery = $transactionsQuery . " WHERE ";
+            // echo $transactionsQuery;
+
+            if(count($credit) > 0){
+                for($i = 0; $i < count($credit); $i++){
+                    if($i == 0){
+                        $transactionsQuery = $transactionsQuery . " t.credit IN(".$credit[$i]."";
+                    }else{
+                        $transactionsQuery = $transactionsQuery . " ,".$credit[$i]."";
+                    }
+                }
+                $transactionsQuery = $transactionsQuery . ")";
+            }
+        }
+
+        //account calculations
+        if($accountsQuery){
+            $stmt1  = $conn->prepare($accountsQuery);
+            $stmt1->execute();
+            $accountsTotals = $stmt1->fetchAll(PDO::FETCH_ASSOC);
+            $stmt1 = null;
+        }
+
+        if($transactionsQuery){
+            $stmt2  = $conn->prepare($transactionsQuery);
+            $stmt2->execute();
+            $transactions   = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+            $stmt2  = null;
+        }
+
+
+        $respObj    = [
+            "status"    => true,
+            "type"      => "success",
+            "data"      => [
+                "accounts"      => $accountsTotals,
+                "transactions"  => $transactions
+            ],
+            "query" => $transactionsQuery,
+            "message"   => "retrieved successfully"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+
+    }catch(Exception $e){
+
+        $respObj    = [
+            "status"    => true,
+            "type"      => "error",
+            "data"      => null,
+            "query" => $debitAccountsQuery,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+    }
+});
