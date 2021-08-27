@@ -581,6 +581,20 @@ function createDateFilter($s,$e, $c, $d){
     return $z;
 };
 
+function createAmountFilter($s,$e, $c, $d){
+    $z = "";
+
+    if(!$s && !$e) return $z;
+
+    if($s && $e && $c && $d){
+        $z = " AND amount BETWEEN '$s' AND '$d'";
+    }else{
+        $z = " WHERE amount BETWEEN '$s' AND '$d'";
+    }
+
+    return $z;
+};
+
 $app->post('/accounting/transactions/search', function (Request $req, Response $res) use ($container){
     try{
         
@@ -596,6 +610,7 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
         $endRage        = $body['endRange'];
 
         $dateFilter = createDateFilter($startDate, $endDate, $credit, $debit);
+        $amountFilter = createAmountFilter($startRange, $endRage, $startDate, $endDate);
 
         //crete query string to fill later
         $accountsQuery          = "";
