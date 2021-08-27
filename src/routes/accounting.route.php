@@ -427,6 +427,90 @@ $app->post('/accounting/transactions', function (Request $req, Response $res) us
     }
 });
 
+$app->get('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use($container) {
+
+    try{
+        
+        $conn   = $container->get('connection');
+        $id     = $args['id'];
+        $q      = "SELECT 
+        t.id as id,
+        t.amount as amount,
+        t.reason as reason,
+        t.remark as remark,
+        t.type as t_type,
+        t.created_at as createdAt,
+        t.status as status,
+        t.photo as photo,
+        t.debit as debit_id,
+        t.credit as credit_id,
+        a.name as debit_name,
+        b.name as credit_name
+        FROM transactions t
+        LEFT JOIN accounts a ON a.id = t.debit
+        LEFT JOIN accounts b ON b.id = t.credit
+        WHERE t.id = '$id';";
+        $stmt   = $conn->prepare($q);
+        $stmt->execute();
+        $response = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $respObj    = [
+            "status"    => true,
+            "type"      => "success",
+            "data"      => $response,
+            "message"   => "retrieved successfully"
+        ];
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+
+    }catch(Exception $e){
+
+        $respObj    = [
+            "status"    => true,
+            "type"      => "success",
+            "data"      => null,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+    }
+});
+
+$app->delete('/accounting/transactions/[{id}]', function (Request $req, Response $res, array $args) use ($container) {
+
+    try{
+
+        $conn   = $container->get('connection');
+        $id     = $args['id'];
+        $q      = "DELETE FROM transactions WHERE id = '$id';";
+        $stmt   = $conn->prepare($q);
+        $stmt->execute();
+
+        $respObj    = [
+            "status"    => true,
+            "type"      => "success",
+            "data"      => null,
+            "message"   => "deleted successfully"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(200);
+        
+    }catch(Exception $e){
+
+        $respObj = [
+            "status"    => false,
+            "type"      => "error",
+            "data"      => null,
+            "message"   => $e->getMessage() ?? "unknown error"
+        ];
+
+        $res->getBody()->write(json_encode($respObj));
+        return $res->withStatus(500);
+    }
+
+});
+
 $app->post('/accounting/upload', function (Request $req, Response $res) use ($container) {
     try{
         $body = json_decode($req->getBody(), true);
