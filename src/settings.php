@@ -18,10 +18,10 @@ return [
         ],
 
         'private_env' => [
-            'db_name' => 'we_import_cp',
+            'db_name' => 'weimport_cp',
             'db_host' => '127.0.0.1',
             'db_user' => 'root',
-            'db_pass' => 'root'
+            'db_pass' => 'rootroot'
         ]
     ],
 ];

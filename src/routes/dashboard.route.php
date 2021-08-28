@@ -35,9 +35,49 @@ $app->get('/stats/dashboard', function (Request $req, Response $res) use ($conta
         $stmt5->execute();
         $pending_orders = $stmt5->fetchAll(PDO::FETCH_ASSOC);
 
+        $stmt6 = $conn->prepare("SELECT a.name, 
+        SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '5')
+         - (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '5') ) as total
+        FROM accounts a WHERE a.id = 5");
+        $stmt6->execute();
+        $cash  = $stmt6->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt7 = $conn->prepare("SELECT SUM(amount) as amount from (select 
+        sum(CASE WHEN a.id = t.debit THEN t.amount ELSE - t.amount END) 
+        as amount,
+        a.name as name
+        from transactions t 
+        LEFT JOIN accounts a ON a.id = t.credit OR a.id = t.debit 
+        WHERE a.group_id = 4
+        GROUP BY a.name) as t1");
+        $stmt7->execute();
+        $expenses  = $stmt7->fetchAll(PDO::FETCH_ASSOC);
+        $stmt7 = null;
+
+        $stmt8 = $conn->prepare("SELECT SUM(amount) as amount from (select 
+        sum(CASE WHEN a.id = t.debit THEN t.amount ELSE - t.amount END) 
+        as amount,
+        a.name as name
+        from transactions t 
+        LEFT JOIN accounts a ON a.id = t.credit OR a.id = t.debit 
+        WHERE a.group_id = 5
+        GROUP BY a.name) as t1");
+        $stmt8->execute();
+        $revenues  = $stmt8->fetchAll(PDO::FETCH_ASSOC);
+        $stmt7 = null;
+
         $respObj = [
             "status"    => true,
-            "results"   => ["totals" => $totals, "income" => $income, "expense" => $expense, "delivered" => $delivered_orders, "pending" => $pending_orders],
+            "results"   => [
+                "totals"        => $totals, 
+                "income"        => $income, 
+                "expense"       => $expense, 
+                "delivered"     => $delivered_orders, 
+                "pending"       => $pending_orders,
+                "cash"          => $cash,
+                "expenses"      => $expenses,
+                "revenues"      => $revenues
+            ],
             "message"   => "successfully created"
         ];
 
@@ -106,9 +146,48 @@ $app->post('/stats/dashboard', function (Request $req, Response $res) use ($cont
         $stmt5->execute();
         $pending_orders = $stmt5->fetchAll(PDO::FETCH_ASSOC);
 
+        $stmt6 = $conn->prepare("SELECT a.name, 
+        SUM((SELECT COALESCE(SUM(amount),0) from transactions WHERE debit = '5') - (SELECT COALESCE(SUM(amount),0) from transactions WHERE credit = '5') ) as total
+        FROM accounts a WHERE a.id = 5");
+        $stmt6->execute();
+        $cash  = $stmt6->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt7 = $conn->prepare("SELECT SUM(amount) as amount from (select 
+        sum(CASE WHEN a.id = t.debit THEN t.amount ELSE - t.amount END) 
+        as amount,
+        a.name as name
+        from transactions t 
+        LEFT JOIN accounts a ON a.id = t.credit OR a.id = t.debit 
+        WHERE a.group_id = 4
+        GROUP BY a.name) as t1");
+        $stmt7->execute();
+        $expenses  = $stmt7->fetchAll(PDO::FETCH_ASSOC);
+        $stmt7 = null;
+
+        $stmt8 = $conn->prepare("SELECT SUM(amount) as amount from (select 
+        sum(CASE WHEN a.id = t.debit THEN t.amount ELSE - t.amount END) 
+        as amount,
+        a.name as name
+        from transactions t 
+        LEFT JOIN accounts a ON a.id = t.credit OR a.id = t.debit 
+        WHERE a.group_id = 5
+        GROUP BY a.name) as t1");
+        $stmt8->execute();
+        $revenues  = $stmt8->fetchAll(PDO::FETCH_ASSOC);
+        $stmt7 = null;
+
         $respObj = [
             "status"    => true,
-            "results"   => ["totals" => $totals, "income" => $income, "expense" => $expense, "delivered" => $delivered_orders, "pending" => $pending_orders],
+            "results"   => [
+                "totals"    => $totals, 
+                "income"    => $income, 
+                "expense"   => $expense, 
+                "delivered" => $delivered_orders, 
+                "pending"   => $pending_orders,
+                "cash"      => $cash,
+                "expenses"  => $expenses,
+                "revenues"  => $revenues
+            ],
             "message"   => "successfully created"
         ];
 

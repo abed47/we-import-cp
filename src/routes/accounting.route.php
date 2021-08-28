@@ -10,17 +10,18 @@ $app->get('/accounting/init', function (Request $req, Response $res) use ($conta
         $conn   = $container->get('connection');
 
         $q1 = "DELETE FROM account_groups;
-        DELETE FROM account_type;
+        DELETE FROM account_types;
         DELETE FROM accounts;";
         $stmt1 = $conn->prepare($q1);
         $stmt1->execute();
         $stmt1 = null;
 
         $q      = " INSERT INTO account_groups(id, name, ledger, code, nature)
-                    VALUES (1, 'Assets', 1, 1, 'c'),
-                    (2, 'Liabilities', 2, 2, 'd'),
+                    VALUES (1, 'Assets', 1, 1, 'd'),
+                    (2, 'Liabilities', 2, 2, 'c'),
                     (3, 'Equity', 3, 3, 'c'),
-                    (4, 'Expense', 4, 4, 'd');
+                    (4, 'Expense', 4, 4, 'd'),
+                    (5, 'Revenue', 5,5,'c');
 
                     INSERT INTO account_types(id, name, group_id)
                     VALUES (1, 'Current Assets', 1),
@@ -29,7 +30,8 @@ $app->get('/accounting/init', function (Request $req, Response $res) use ($conta
                     (4, 'Long-Term Liabilities', 2),
                     (5, 'Equity', 3),
                     (6, 'Operating Expenses', 4),
-                    (7, 'Non-Operating Expenses', 4);
+                    (7, 'Non-Operating Expenses', 4),
+                    (8, 'Revenues', 5);
 
                     INSERT INTO accounts(id, name, group_id, nature, parent, code)
                     VALUES (1, 'Bank', 1, NULL, 1, 001),
@@ -53,8 +55,10 @@ $app->get('/accounting/init', function (Request $req, Response $res) use ($conta
                     (19, 'Salaries & Wages', 4, NULL, 6, 302),
                     (20, 'Admin Expenses', 4, NULL, 6, 303),
                     (21, 'Miscellaneous', 4, NULL, 6, 304),
-                    (22, 'Interest Expenses', 4, NULL, 7, 351),
-                    (23, 'Loss from disposal of assets', 4, NULL, 7, 352)
+                    (22, 'Delivery Expenses', 4, NULL, 6, 305),
+                    (23, 'Interest Expenses', 4, NULL, 7, 351),
+                    (24, 'Loss from disposal of assets', 4, NULL, 7, 352),
+                    (25, 'Service Revenue', 5, NULL, 8, 400);
                     ";
         $stmt       = $conn->prepare($q);
         $stmt->execute();
@@ -638,24 +642,24 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
 
         }
 
+        $transactionsQuery = "SELECT 
+        t.id as id,
+        t.amount as amount,
+        t.reason as reason,
+        t.remark as remark,
+        t.type as t_type,
+        t.created_at as createdAt,
+        t.status as status,
+        t.photo as photo,
+        t.debit as debit_id,
+        t.credit as credit_id,
+        a.name as debit_name,
+        b.name as credit_name
+        FROM transactions t
+        LEFT JOIN accounts a ON a.id = t.debit
+        LEFT JOIN accounts b ON b.id = t.credit";
         //get transaction query
-        if(count($debit) > 0 || count($credit)){
-            $transactionsQuery = "SELECT 
-            t.id as id,
-            t.amount as amount,
-            t.reason as reason,
-            t.remark as remark,
-            t.type as t_type,
-            t.created_at as createdAt,
-            t.status as status,
-            t.photo as photo,
-            t.debit as debit_id,
-            t.credit as credit_id,
-            a.name as debit_name,
-            b.name as credit_name
-            FROM transactions t
-            LEFT JOIN accounts a ON a.id = t.debit
-            LEFT JOIN accounts b ON b.id = t.credit";
+        if(count($debit) > 0 || count($credit) > 0){
 
             if(count($debit) > 0){
                 for($i = 0; $i < count($debit); $i++){
@@ -682,6 +686,8 @@ $app->post('/accounting/transactions/search', function (Request $req, Response $
                 }
                 $transactionsQuery = $transactionsQuery . ")" . " " . $dateFilter . " " . $amountFilter;
             }
+        }else{
+            $transactionsQuery = $transactionsQuery . " " . $dateFilter . " " . $amountFilter;
         }
 
         //add date filter
