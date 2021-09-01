@@ -90,13 +90,22 @@ $app->get('/orders', function (Request $req, Response $res) use ($container) {
 
         if(isset($_GET['status'])){
             $statuss = $_GET['status'];
+            $filter = "";
+            for($i = 0; $i < count($statuss); $i++){
+                if($i == 0){
+                   $filter = $filter .  " status = " . $statuss[$i] . " ";
+                }else{
+                    $filter = $filter . " OR status = " . $statuss[$i] . " ";
+                }
+            }
+
             $stmt = $conn->query(
                 "SELECT *, (SELECT SUM(price) FROM items 
                 where order_id = o.id) as total_price, 
                 (SELECT description from items i  where i.order_id = o.id LIMIT 1) as item_description,
                 (SELECT COUNT(*) FROM items where order_id = o.id) as total_items 
-                FROM orders o WHERE status = $statuss 
-                AND  deleted_at IS NULL ORDER BY created_at DESC");
+                FROM orders o WHERE " . $filter . "
+                AND deleted_at IS NULL ORDER BY created_at DESC");
         }else{
             $stmt = $conn->query(
                 'SELECT *, (SELECT SUM(price) FROM 
