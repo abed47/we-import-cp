@@ -162,8 +162,14 @@ $app->put('/orders', function (Request $req, Response $res) use ($container) {
     $status             = $body['status'];
     $name               = $body['name'];
     $selling_price      = $body['sellingPrice'];
+    $airShippingSelling = $body['airShippingSelling'];
+    $seaShippingSelling = $body['seaShippingSelling'];
     $quantity           = $body['quantity'];
     $updated            = date('Y-m-d H:i:s', time());
+
+    $shippingPriceUpdateString = "";
+    if($airShippingSelling) $shippingPriceUpdateString = $shippingPriceUpdateString . ", air_shipping_selling_price = " . $airShippingSelling;
+    if($seaShippingSelling) $shippingPriceUpdateString = $shippingPriceUpdateString . ", sea_shipping_selling_price = " . $seaShippingSelling;
 
     try {
         $item = $conn->prepare(
@@ -174,6 +180,7 @@ $app->put('/orders', function (Request $req, Response $res) use ($container) {
             client_id = '$clientId',
             selling_price = '$selling_price',
             quantity = '$quantity'
+            " .$shippingPriceUpdateString. "
             WHERE id = $itemId;
             UPDATE orders
             SET name = '$name',
@@ -428,13 +435,17 @@ $app->put('/batch/item/[{id}]', function (Request $req, Response $res, array $ar
             $link = $items[$i]['link'];
             $itemId = $items[$i]['id'];
             $selling_price = $items[$i]['selling_price'] ?? 0;
+            $airShippingSelling = $items[$i]['air_shipping_selling_price'] ?? 0;
+            $seaShippingSelling = $items[$i]['sea_shipping_selling_price'] ?? 0;
             $query = $query . " " . "UPDATE items SET description = '$description', 
             quantity = '$quantity', 
             status = '$status', 
             client_id = '$clientId', 
             link = '$link', 
             target_price = $target_price,
-            selling_price = '$selling_price'
+            selling_price = '$selling_price',
+            sea_shipping_selling_price = $seaShippingSelling,
+            air_shipping_selling_price = $airShippingSelling
             WHERE id = '$itemId';";
         }
 
